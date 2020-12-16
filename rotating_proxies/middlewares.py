@@ -96,7 +96,7 @@ class RotatingProxyMiddleware(object):
             if request.status == 200:
                 proxies_str = request.data.decode('utf-8').strip()
                 proxies = proxies_str.split('\r\n')
-                logger.error(f"Get Proxy list is {len(proxies)}")
+                logger.info(f"Get Proxy list is {len(proxies)}")
                 proxy_list = proxies
             else:
                 logger.error("Get Proxy Http Status is not 200")
