@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import logging
+import urllib3
 import codecs
 from functools import partial
 from six.moves.urllib.parse import urlsplit
@@ -63,6 +64,7 @@ class RotatingProxyMiddleware(object):
     * ``ROTATING_PROXY_BACKOFF_CAP`` - backoff time cap, in seconds.
       Default is 3600 (i.e. 60 min).
     """
+
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
                  max_proxies_to_try, backoff_base, backoff_cap, crawler):
 
@@ -82,9 +84,23 @@ class RotatingProxyMiddleware(object):
     def from_crawler(cls, crawler):
         s = crawler.settings
         proxy_path = s.get('ROTATING_PROXY_LIST_PATH', None)
+        proxy_url = s.get('ROTATING_PROXY_URL', None)
+
         if proxy_path is not None:
             with codecs.open(proxy_path, 'r', encoding='utf8') as f:
                 proxy_list = [line.strip() for line in f if line.strip()]
+
+        elif proxy_url is not None:
+            http = urllib3.PoolManager()
+            request = http.request('GET', proxy_url)
+            if request.status == 200:
+                proxies_str = request.data.decode('utf-8').strip()
+                proxies = proxies_str.split('\r\n')
+                logger.error(f"Get Proxy list is {len(proxies)}")
+                proxy_list = proxies
+            else:
+                logger.error("Get Proxy Http Status is not 200")
+
         else:
             proxy_list = s.getlist('ROTATING_PROXY_LIST')
         if not proxy_list:
@@ -265,6 +281,7 @@ class BanDetectionMiddleware(object):
                 return None
 
     """
+
     def __init__(self, stats, policy):
         self.stats = stats
         self.policy = policy
